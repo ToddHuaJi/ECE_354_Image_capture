@@ -1,6 +1,8 @@
 // #include "address_map_arm.h"
 #include "stdio.h"
 #include "time.h"
+#include "string.h"
+
 #define KEY_BASE              0xFF200050
 #define VIDEO_IN_BASE         0xFF203060
 #define FPGA_ONCHIP_BASE      0xC8000000
@@ -35,14 +37,14 @@
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////Kai's global/////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
+    volatile int counter = 0;
 
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////Gongtao's global///////////////////////////////////////// 
 ///////////////////////////////////////////////////////////////////////////////
-
+    char *text_ptr;
  
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -111,6 +113,47 @@ void diff(){
 //////////////////////Kai's functions//////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+void Counter()
+    {
+            char *C;
+            text_ptr = "Counter: ";
+            int offset= (7<<1)+ 1;
+            *(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
+           
+            sprintf(C, "%d", counter);
+            text_ptr = combine((char*)C , (char*)text_ptr);
+            while ( *(text_ptr) )
+            {
+                *(TXT + offset) = *(text_ptr); // write to the character buffer
+                ++text_ptr;
+                ++offset;
+            }
+    }
+    
+char* combine(char* a, char* b){
+        char src[100], dest[100];
+        strcpy(src, a);
+        strcpy(dest,b);
+        strcat(dest,src);
+        return dest;
+}
+    
+    
+void invert(){
+    int x,y;
+    for (y = 0; y < 240; y++) {
+        for (x = 0; x < 320; x++) {
+            short temp2 = *(Video_Mem_ptr + (y << 9) + x);
+            if(temp2 > 8210){
+                temp2 = 0;
+            }
+            else if(temp2 < 8210){
+                temp2 = 0xFFFF;
+            }
+            *(Video_Mem_ptr + (y << 9) + x) = temp2;
+        }
+    }
+    }
 
 
 
@@ -120,7 +163,7 @@ void diff(){
 int time(){                                     // write current time to the screen 
     int offset = (25 << 7) + 1;                 // place of the text 
     // time stampt use
-    char *text_ptr;
+    
     time_t mytime;
     mytime = time(NULL);
     text_ptr = ctime(&mytime);                  // time text 
@@ -148,6 +191,7 @@ int image(){
     {
         if (*KEY_ptr != 0)                      // check if any KEY was pressed
         {   
+            counter++;
             if(*SW_ptr == 4 ){                  // SW3, time stamp
                 time();                         //writting time to the screen
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
@@ -155,7 +199,7 @@ int image(){
             }
             else if(*SW_ptr == 8){              // SW4, image count 
                 //****** code here
-                
+                Counter();
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
@@ -171,6 +215,7 @@ int image(){
             }
             else if(*SW_ptr == 64){             // SW7, invert
                 //****** code here
+                invert();
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
