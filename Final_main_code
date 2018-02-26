@@ -37,7 +37,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////Kai's global/////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-    volatile int counter = 0;
+    int counter = 0;
 
 
 
@@ -50,14 +50,21 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////Conley's functions//////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
+//swap two pixels
 void Mswap (int a, int b, int c, int d ){
-    short temp = *(Video_Mem_ptr + (a << 9) + b)
-    *(Video_Mem_ptr + (a << 9) + b) = arr[c][d];
+    short temp = *(Video_Mem_ptr + (a << 9) + b);
+	
+    *(Video_Mem_ptr + (a << 9) + b) =  *(Video_Mem_ptr + (c << 9) + d);
     *(Video_Mem_ptr + (c << 9) + d) = temp;
 }
 void rotate180 (){
     *(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
+	while(*KEY_ptr != 0 ); 
+    //while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+	//while(*KEY_ptr != 0 );
+    while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+	printf("Hello");
+	int x,y;
     for (y = 0; y < 240/2; y++) {
         for (x = 0; x < 320; x++) { 
             Mswap(y,x,ROW-1-y,COL-1-x);
@@ -67,7 +74,12 @@ void rotate180 (){
 }
 void mirror (){
     *(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
-    for (y = 0; y < 240; y++) {
+    int x,y;
+	while(*KEY_ptr != 0 );
+    //while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+	//while(*KEY_ptr != 0 );
+    while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+	for (y = 0; y < 240; y++) {
         for (x = 0; x < 320/2;x++) {        
             Mswap(y,x,y,COL-1-x);
         }
@@ -79,40 +91,68 @@ void diff(){
      short temp2 =0;
      short arr[ROW][COL];
     *(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame, picture 1 
-            for (y = 0; y < 240; y++) {
+    int x,y;
+			for (y = 0; y < 240; y++) {
                 for (x = 0; x < 320; x++) {
-                    short temp2 = *(Video_Mem_ptr + ((y) << 9) + (x));
-                    arr[y][x] = temp2;      
+                    short ww = *(Video_Mem_ptr + ((y) << 9) + (x));
+                    arr[y][x] = ww;      
                 }   
             }
             
+    while(*KEY_ptr != 0 );    
     while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
     
     *(Video_In_DMA_ptr + 3) = 0x4;              // Enable the video for picture 2 
-    while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+    while(*KEY_ptr != 0 );
+	while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
     *(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame, picture 2 
     
     //compare loop
-    for (y = 0; y < 240/2; y++) {
+    for (y = 0; y < 240; y++) {
         for (x = 0; x < 320; x++) {
              temp = *(Video_Mem_ptr + ((y) << 9) + (x));
-             temp2 =  *(Video_Mem_ptr + ((ROW-1-y) << 9) + (COL-1-x));
-             if(arr[y][x]!=temp){
-             temp = 0b1111100000000000;        //all red
+             if(arr[y][x]-temp>50){
+             temp = 63488;        //all red
              }
-             if (arr[ROW-1-y][COL-1-x] != temp2){
-             temp = 0b1111100000000000;
-             }   
-            *(Video_Mem_ptr + ((y) << 9) + (x)) =temp;
-             *(Video_Mem_ptr + ((ROW-1-y) << 9) + (COL-1-x))=temp2;    
+            *(Video_Mem_ptr + ((y) << 9) + (x)) =temp; 
         }   
     }
+	while(*KEY_ptr == 0 );  
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////Kai's functions//////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+char* combine(char* a, char* b){			// combine two String 
+        char src[100], dest[100];
+        strcpy(src, a);
+        strcpy(dest,b);
+        strcat(dest,src);
+        return dest;
+}
+
+void EdgeDetect(){
+	int x,y;
+	*(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
+		for (y = 0; y < 240; y++) {
+            for (x = 0; x < 320; x++) {
+            short temp2 = *(Video_Mem_ptr + (y << 9) + x);
+            short diff1  = temp2 - *(Video_Mem_ptr + ((y+1) << 9) + x);
+            //short diff2  = temp2 - *(Video_Mem_ptr + ((y-1) << 9) + x);
+            short diff3  = temp2 - *(Video_Mem_ptr + (y << 9) + (x+1));
+            //short diff4  = temp2 - *(Video_Mem_ptr + (y << 9) + (x-1));
+            if(diff1 > 4000 ){
+                temp2 = 63488;
+            }
+            else if(diff3 > 2800 ){
+                temp2 = 63488;
+            }
+            *(Video_Mem_ptr + (y << 9) + x) = temp2;
+        }
+
+		}
+}
 void Counter()
     {
             char *C;
@@ -121,7 +161,9 @@ void Counter()
             *(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
            
             sprintf(C, "%d", counter);
+			
             text_ptr = combine((char*)C , (char*)text_ptr);
+			printf("%s, %d", text_ptr, counter);
             while ( *(text_ptr) )
             {
                 *(TXT + offset) = *(text_ptr); // write to the character buffer
@@ -130,17 +172,10 @@ void Counter()
             }
     }
     
-char* combine(char* a, char* b){
-        char src[100], dest[100];
-        strcpy(src, a);
-        strcpy(dest,b);
-        strcat(dest,src);
-        return dest;
-}
-    
-    
-void invert(){
+
+int invert(){
     int x,y;
+	*(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
     for (y = 0; y < 240; y++) {
         for (x = 0; x < 320; x++) {
             short temp2 = *(Video_Mem_ptr + (y << 9) + x);
@@ -153,6 +188,7 @@ void invert(){
             *(Video_Mem_ptr + (y << 9) + x) = temp2;
         }
     }
+	return 0;
     }
 
 
@@ -160,7 +196,84 @@ void invert(){
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////Gongtao's functions//////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-int time(){                                     // write current time to the screen 
+void Welcome(){
+	char* welcome = "pick a switch an press KEY";
+	
+    char* t = "SW1 -> timestamp";
+    char* c = "SW2 -> image count";
+    char* ro = "SW3 -> rotate";
+    char* mir = "SW4 -> mirror";
+    char* inv = "SW5 -> invert";
+	char* ed = "SW6 -> edge detection";
+	char* di = "SW7 -> difference detection";
+    int offset;
+    
+    offset = ( 1 << 7) + 1; 
+    while ( *(welcome) )
+    {
+        *(TXT + offset) = *(welcome); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++welcome;
+        ++offset;
+    }
+    offset = ( 2 << 7) + 1; 
+    while ( *(t) )
+    {
+        *(TXT + offset) = *(t); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++t;
+        ++offset;
+    }
+    offset = ( 3 << 7) + 1; 
+    while ( *(c) )
+    {
+        *(TXT + offset) = *(c); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++c;
+        ++offset;
+    }
+    offset = ( 4 << 7) + 1; 
+    while ( *(ro) )
+    {
+        *(TXT + offset) = *(ro); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++ro;
+        ++offset;
+    }
+    offset = ( 5 << 7) + 1; 
+    while ( *(mir) )
+    {
+        *(TXT + offset) = *(mir); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++mir;
+        ++offset;
+    }
+    offset = ( 6 << 7) + 1; 
+    while ( *(inv) )
+    {
+        *(TXT + offset) = *(inv); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++inv;
+        ++offset;
+    }
+     offset = ( 7 << 7) + 1; 
+    while ( *(ed) )
+    {
+        *(TXT + offset) = *(ed); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++ed;
+        ++offset;
+    } 
+	offset = ( 8 << 7) + 1; 
+    while ( *(di) )
+    {
+        *(TXT + offset) = *(di); // write to the character buffer
+        //printf("%s",*(TXT + offset));
+        ++di;
+        ++offset;
+    }
+}
+int timeStamp(){                                     // write current time to the screen 
     int offset = (25 << 7) + 1;                 // place of the text 
     // time stampt use
     
@@ -168,7 +281,7 @@ int time(){                                     // write current time to the scr
     mytime = time(NULL);
     text_ptr = ctime(&mytime);                  // time text 
     
-*(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
+	*(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
     
     while ( *(text_ptr) )
     {
@@ -177,6 +290,7 @@ int time(){                                     // write current time to the scr
         ++text_ptr;
         ++offset;
     }
+	return 0;
     
 }
  
@@ -187,35 +301,62 @@ int time(){                                     // write current time to the scr
 int image(){
                                                             //TODO,fill in the blanks 
     *(Video_In_DMA_ptr + 3) = 0x4;              // Enable the video every time 
+	while(*KEY_ptr != 0 );						// catch long KEY holding, wait for release
+	
+    
+	
     while (1)
     {
         if (*KEY_ptr != 0)                      // check if any KEY was pressed
         {   
-            counter++;
-            if(*SW_ptr == 4 ){                  // SW3, time stamp
-                time();                         //writting time to the screen
+            if(*SW_ptr == 0){
+				Welcome();
+				while(*KEY_ptr != 0 );
+                while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+				return 0;
+			}
+			counter++;
+            if(*SW_ptr == 2 ){                  // SW1, time stamp
+                timeStamp();				//writting time to the screen
+				while(*KEY_ptr != 0 );
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
-            else if(*SW_ptr == 8){              // SW4, image count 
+            else if(*SW_ptr == 4){              // SW2, image count 
                 //****** code here
                 Counter();
+                while(*KEY_ptr != 0 );
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
-            else if(*SW_ptr == 16){             // SW5, rotate 180
+            else if(*SW_ptr == 8){             // SW3, rotate 180
                 rotate180();
+				while(*KEY_ptr != 0 );
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
-            else if(*SW_ptr == 32){             // SW6, mirror 
+            else if(*SW_ptr == 16){             // SW4, mirror 
                 mirror();
+                while(*KEY_ptr != 0 );
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
-            else if(*SW_ptr == 64){             // SW7, invert
+            else if(*SW_ptr == 32){             // SW5, invert
                 //****** code here
                 invert();
+				while(*KEY_ptr != 0 );
+                while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+                return 0;
+            }
+			else if(*SW_ptr == 64){             // SW6, edge detect 
+                EdgeDetect();
+                while(*KEY_ptr != 0 );
+                while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+                return 0;
+            }
+			else if(*SW_ptr == 128){             // SW7, detect difference
+                diff();
+                while(*KEY_ptr != 0 );
                 while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
                 return 0;
             }
@@ -234,70 +375,19 @@ int image(){
 
 
 int main(void){                                             //Da main code
-    char* welcome = "pick a switch an press KEY";
-    char* t = "SW3 -> timestamp";
-    char* c = "SW4 -> image count";
-    char* ro = "SW5 -> rotate";
-    char* mir = "SW6 -> mirror";
-    char* inv = "SW8 -> invert";
-    int offset;
-    
-    offset = ( 1 << 7) + 1; 
-    while ( *(welcome) )
-    {
-        *(TXT + offset) = *(welcome); // write to the character buffer
-        printf("%s",*(TXT + offset));
-        ++welcome;
-        ++offset;
-    }
-    offset = ( 2 << 7) + 1; 
-    while ( *(t) )
-    {
-        *(TXT + offset) = *(t); // write to the character buffer
-        printf("%s",*(TXT + offset));
-        ++t;
-        ++offset;
-    }
-    offset = ( 1 << 7) + 1; 
-    while ( *(c) )
-    {
-        *(TXT + offset) = *(c); // write to the character buffer
-        printf("%s",*(TXT + offset));
-        ++c;
-        ++offset;
-    }
-    offset = ( 1 << 7) + 1; 
-    while ( *(ro) )
-    {
-        *(TXT + offset) = *(ro; // write to the character buffer
-        printf("%s",*(TXT + offset));
-        ++ro;
-        ++offset;
-    }
-    offset = ( 1 << 7) + 1; 
-    while ( *(mir) )
-    {
-        *(TXT + offset) = *(mir); // write to the character buffer
-        printf("%s",*(TXT + offset));
-        ++mir;
-        ++offset;
-    }
-    offset = ( 1 << 7) + 1; 
-    while ( *(inv) )
-    {
-        *(TXT + offset) = *(inv); // write to the character buffer
-        printf("%s",*(TXT + offset));
-        ++inv;
-        ++offset;
-    }
-    
+    //Welcome();
     /*
     * HERE comes da main code 
     */
+	int y;
+	text_ptr = " ";
     while(1){
-        
-        image();
-        
-    }
+        printf(" image \n");
+        image();      
+		for(y = 0 ; y<(80*60); y++){
+			*(TXT + y) = *(text_ptr); // write to the character buffer
+		}
+	}		
+    
     return 0;                                               //shouldn't reach here 
 }
