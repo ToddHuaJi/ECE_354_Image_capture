@@ -175,10 +175,12 @@ void Counter()
 
 int invert(){
     int x,y;
+	short arr[ROW][COL];
 	*(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
     for (y = 0; y < 240; y++) {
         for (x = 0; x < 320; x++) {
             short temp2 = *(Video_Mem_ptr + (y << 9) + x);
+			arr[y][x] = temp2;
             if(temp2 > 8210){
                 temp2 = 0;
             }
@@ -186,10 +188,24 @@ int invert(){
                 temp2 = 0xFFFF;
             }
             *(Video_Mem_ptr + (y << 9) + x) = temp2;
+        }	
+    }
+	while(*KEY_ptr != 0 );
+    while(*KEY_ptr == 0 );          //wait for KEY press to end this cycle 
+	for (y = 0; y < 240; y++) {
+        for (x = 0; x < 320; x++) {
+			short ttt = arr[y][x];
+			if(ttt < 8210){
+                ttt = 0;
+            }
+            else if(ttt > 8210){
+                ttt = 0xFFFF;
+            }
+            *(Video_Mem_ptr + (y << 9) + x) = ttt;
         }
-    }
+	}
 	return 0;
-    }
+}
 
 
 
@@ -382,7 +398,6 @@ int main(void){                                             //Da main code
 	int y;
 	text_ptr = " ";
     while(1){
-        printf(" image \n");
         image();      
 		for(y = 0 ; y<(80*60); y++){
 			*(TXT + y) = *(text_ptr); // write to the character buffer
