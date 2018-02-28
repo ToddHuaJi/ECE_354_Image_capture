@@ -293,10 +293,19 @@ int timeStamp(){                                     // write current time to th
     int offset = (25 << 7) + 1;                 // place of the text 
     // time stampt use
     
-    time_t mytime;
-    mytime = time(NULL);
-    text_ptr = ctime(&mytime);                  // time text 
-    
+	
+	
+    struct tm *mt;
+	time_t mtt;
+	char * text_ptr;
+	
+	setenv("TZ", "EST5EDT4", 1);
+	tzset();
+	mtt = time(NULL);
+	mt = localtime(&mtt);
+	text_ptr = ctime(&mtt);
+	//strftime(text_ptr, 20, "%Z %H%M", mt);
+	printf("%s\n", text_ptr);
 	*(Video_In_DMA_ptr + 3) = 0x0;          // Disable the video to capture one frame
     
     while ( *(text_ptr) )
